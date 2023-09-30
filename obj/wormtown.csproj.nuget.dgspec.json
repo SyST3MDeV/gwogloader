@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\gregorym\\Documents\\wormtown\\wormtown.csproj": {}
+    "C:\\Users\\David\\Documents\\gwogloader\\wormtown.csproj": {}
   },
   "projects": {
-    "C:\\Users\\gregorym\\Documents\\wormtown\\wormtown.csproj": {
+    "C:\\Users\\David\\Documents\\gwogloader\\wormtown.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\gregorym\\Documents\\wormtown\\wormtown.csproj",
+        "projectUniqueName": "C:\\Users\\David\\Documents\\gwogloader\\wormtown.csproj",
         "projectName": "wormtown",
-        "projectPath": "C:\\Users\\gregorym\\Documents\\wormtown\\wormtown.csproj",
-        "packagesPath": "C:\\Users\\gregorym\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\gregorym\\Documents\\wormtown\\obj\\",
+        "projectPath": "C:\\Users\\David\\Documents\\gwogloader\\wormtown.csproj",
+        "packagesPath": "C:\\Users\\David\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\David\\Documents\\gwogloader\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\gregorym\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "C:\\Users\\David\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net45"
@@ -45,7 +45,7 @@
               "autoReferenced": true
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.203\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.306\\RuntimeIdentifierGraph.json"
         }
       }
     }

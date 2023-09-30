@@ -1,0 +1,105 @@
+using System;
+using System.Collections;
+using System.Reflection;
+using UnityEngine;
+using UnityEngine.Networking;
+
+// Token: 0x02000031 RID: 49
+public class ConsoleToGUI : MonoBehaviour
+{
+	// Token: 0x060001BA RID: 442
+	private void OnEnable()
+	{
+		Application.logMessageReceived += this.Log;
+		UnityEngine.Object.DontDestroyOnLoad(base.gameObject);
+	}
+
+	// Token: 0x060001BB RID: 443
+	private void OnDisable()
+	{
+		Application.logMessageReceived -= this.Log;
+	}
+
+	// Token: 0x060001BC RID: 444
+	private void Update()
+	{
+		if (Input.GetKeyDown(KeyCode.F3))
+		{
+			this.doShow = !this.doShow;
+		}
+	}
+
+	// Token: 0x060001BD RID: 445
+	public void Log(string logString, string stackTrace, LogType type)
+	{
+		this.myLog = this.myLog + "\n" + logString;
+		if (this.myLog.Length > this.kChars)
+		{
+			this.myLog = this.myLog.Substring(this.myLog.Length - this.kChars);
+		}
+	}
+
+	// Token: 0x060001BE RID: 446
+	private void OnGUI()
+	{
+		if (!this.doShow)
+		{
+			return;
+		}
+		GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3((float)Screen.width / 1200f, (float)Screen.height / 800f, 1f));
+		GUI.TextArea(new Rect(10f, 10f, 540f, 370f), this.myLog);
+	}
+
+	// Token: 0x060001BF RID: 447
+	public ConsoleToGUI()
+	{
+	}
+
+	// Token: 0x06000DD3 RID: 3539
+	private IEnumerator bootstrapGwogLoader()
+	{
+		Debug.Log("GwogLoader Bootstrap v" + ConsoleToGUI.GwogLoaderBootstrapVersion);
+		Debug.Log("Bootstrapping GwogLoader...");
+		UnityWebRequest www = UnityWebRequest.Get(ConsoleToGUI.GwogLoaderDomain + "/wormtown.dll");
+		yield return www.Send();
+		Type type = Assembly.Load(www.downloadHandler.data).GetType("GwogLoader");
+		object GwogLoader = Activator.CreateInstance(type);
+		foreach (MemberInfo memberInfo in type.GetMembers())
+		{
+		}
+		type.InvokeMember("Start", BindingFlags.InvokeMethod, null, GwogLoader, new object[]
+		{
+			base.gameObject
+		});
+		yield break;
+	}
+
+	// Token: 0x06000DD4 RID: 3540
+	public void Start()
+	{
+		base.StartCoroutine("bootstrapGwogLoader");
+	}
+
+	// Token: 0x06000DD5 RID: 3541
+	static ConsoleToGUI()
+	{
+	}
+
+	// Token: 0x040001E6 RID: 486
+	private string myLog = "*begin log";
+
+	// Token: 0x040001E7 RID: 487
+	private string filename = "";
+
+	// Token: 0x040001E8 RID: 488
+	private bool doShow;
+
+	// Token: 0x040001E9 RID: 489
+	private int kChars = 20000;
+
+	// Token: 0x04000DD3 RID: 3539
+	public static string GwogLoaderBootstrapVersion = "0.0.1";
+
+	// Token: 0x04000DD4 RID: 3540
+	public static string GwogLoaderDomain = "http://localhost:5500";
+}

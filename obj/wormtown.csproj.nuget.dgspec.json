@@ -17,14 +17,14 @@
           "C:\\Users\\David\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
-          "net45"
+          "net452"
         ],
         "sources": {
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
-          "net45": {
-            "targetAlias": "net45",
+          "net452": {
+            "targetAlias": "net452",
             "projectReferences": {}
           }
         },
@@ -35,8 +35,8 @@
         }
       },
       "frameworks": {
-        "net45": {
-          "targetAlias": "net45",
+        "net452": {
+          "targetAlias": "net452",
           "dependencies": {
             "Microsoft.NETFramework.ReferenceAssemblies": {
               "suppressParent": "All",

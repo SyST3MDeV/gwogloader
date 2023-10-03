@@ -20,51 +20,25 @@ class GwogLoader{
     }
 }
 
-class GwogLoaderModSync : NetworkBehaviour{
-    public Assembly assembly;
-
-    public NetworkList<FixedString64Bytes> serverEnabledMods;
-
-    void Awake()
-    {
-        serverEnabledMods = new NetworkList<FixedString64Bytes>(new FixedString64Bytes[]{}, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
-    }
-
-    public override void OnNetworkSpawn()
-   {
-        base.OnNetworkSpawn();
-       if (IsHost)
-       {
-            Debug.Log("We netspawned as host!");
-            //serverEnabledMods = new NetworkList<FixedString64Bytes>(new FixedString64Bytes[]{}, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
-       }
-       else{
-        Debug.Log("We netspawned as client!");
-       }
-
-        serverEnabledMods.Initialize(this);
-        serverEnabledMods.OnListChanged += OnModsChanged;
-   }
-
-   public int getNumberModsEnabledServer(){
-    return serverEnabledMods.Count;
-   }
-
-   private void OnModsChanged(NetworkListEvent<FixedString64Bytes> changeEvent)
-    {
-        Debug.Log("Mods changed!");
-    }
-
-    [ClientRpc]
-    public void testthingy(){
-        Debug.Log("GWOG SAYS HI");
-    }
+enum GwogLoaderState{
+    FetchingManifest,
+    FetchFailed,
+    Ready,
+    InModdableLobbyAsHost,
+    InModdableLobbyAsClient,
+    InUnmoddableLobbyAsHost,
+    InUnmoddableLobbyAsClient,
+    LoadingMods,
+    WaitingForOtherPlayersToLoadMods,
+    InModsEnabledGame,
+    InModsDisabledGame,
+    UnknownError
 }
 
 class GwogLoaderGUI: MonoBehaviour{
-    public GwogLoaderModSync gwogLoaderModSync;
-
     public bool connectedToLobby = false;
+
+    public List<FixedString64Bytes> enabledModList = new List<FixedString64Bytes>();
 
     public List<string> availableModList = new List<string>();
 
@@ -80,9 +54,11 @@ class GwogLoaderGUI: MonoBehaviour{
 
     public Vector2 scrollPosition = Vector2.zero;
 
-    public GameObject consoleGameobject;
+    public GwogLoaderState gwogLoaderState = GwogLoaderState.FetchingManifest;
 
-    private GameObject objectToAdd;
+    public bool fatalError = false;
+
+    public bool recievedHostModCheck = false;
 
     IEnumerator initGwogLoader(){
         UnityWebRequest www = UnityWebRequest.Get(GwogLoaderDomain + "/manifest.json");
@@ -92,15 +68,6 @@ class GwogLoaderGUI: MonoBehaviour{
     }
 
     public void Start(){
-        NetworkManager.Singleton.NetworkConfig.ForceSamePrefabs = false;
-        NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler("GwogLoaderModSyncModsUpdated", modsUpdatedCallback);
-        objectToAdd = new GameObject();
-        
-        DontDestroyOnLoad(objectToAdd);
-        objectToAdd.AddComponent<GwogLoaderModSync>();
-        objectToAdd.AddComponent<NetworkObject>();
-        NetworkManager.Singleton.AddNetworkPrefab(objectToAdd);
-        Debug.Log(objectToAdd);
         StartCoroutine(initGwogLoader());
     }
 
@@ -109,38 +76,61 @@ class GwogLoaderGUI: MonoBehaviour{
         Debug.Log("Mods updated!");
     }
 
-    public void enableMod(string mod){
-        gwogLoaderModSync.serverEnabledMods.Add(mod);
-        gwogLoaderModSync.testthingy();
-    }
-
-    public void disableMod(string mod){
-        gwogLoaderModSync.serverEnabledMods.Remove(mod);
-    }
-
-    public bool modIsEnabled(string mod){
-        if(gwogLoaderModSync == null){
-            return false;
-        }
-
-        return gwogLoaderModSync.serverEnabledMods.Contains(mod);
-    }
-
     public void OnGUI(){
-        string modsString2 = availableModList.Count == 1 ? "mod" : "mods";
-        string availableModsText = gwogLoaderFinishedInit ? "\n"+availableModList.Count+" "+modsString2+" available!" : "\nUpdating manifest...";
-
-        if(gwogLoaderModSync == null){
-            GUI.Label(new Rect(10, 10, 300, 50), "GwogLoader v"+version+"\n"+availableModsText);
-        }
-        else{
-            string modsString = gwogLoaderModSync.getNumberModsEnabledServer() == 1 ? "mod" : "mods";
-
-            GUI.Label(new Rect(10, 10, 300, 80), "GwogLoader v"+version+"\n"+gwogLoaderModSync.getNumberModsEnabledServer()+" enabled "+modsString+"!"+availableModsText);
-        }
+        GUI.Window(1, new Rect(10, 15, 300, 92), statusWindowFunc, "GwogLoader v"+version);
 
         if(menuEnabled){
             windowPosition = GUI.Window(0, windowPosition, windowFunc, "GwogLoader Menu");
+        }
+    }
+
+    public void statusWindowFunc(int windowID){
+        string currentStateText = "";
+
+        if(gwogLoaderState == GwogLoaderState.FetchingManifest){
+            currentStateText = "Fetching mod manifest...";
+        }
+        else if(gwogLoaderState == GwogLoaderState.FetchFailed){
+            currentStateText = "FATAL ERROR: Unable to fetch mod manifest";
+        }
+        else if(gwogLoaderState == GwogLoaderState.InModdableLobbyAsClient){
+            currentStateText = "In moddable lobby, host will enable mods!";
+        }
+        else if(gwogLoaderState == GwogLoaderState.InModdableLobbyAsHost){
+            currentStateText = "In moddable lobby, enable mods using the menu!";
+        }
+        else if(gwogLoaderState == GwogLoaderState.InUnmoddableLobbyAsClient){
+            currentStateText = "One of the clients/host is not modded, mods are disabled!";
+        }
+        else if(gwogLoaderState == GwogLoaderState.InUnmoddableLobbyAsHost){
+            currentStateText = "One of the clients is not modded, mods are disabled!";
+        }
+        else if(gwogLoaderState == GwogLoaderState.LoadingMods){
+            currentStateText = "Loading mods...";
+        }
+        else if(gwogLoaderState == GwogLoaderState.WaitingForOtherPlayersToLoadMods){
+            currentStateText = "Waiting for all clients to load mods...";
+        }
+        else if(gwogLoaderState == GwogLoaderState.InModsEnabledGame){
+            currentStateText = "In Game - Mods Enabled!";
+        }
+        else if(gwogLoaderState == GwogLoaderState.InModsDisabledGame){
+            currentStateText = "In Game - Mods Disabled :(";
+        }
+        else{
+            currentStateText = "FATAL ERROR: Unknown";
+        }
+
+        string statusText = currentStateText+"\nTesting\nTesting";
+
+        GUIStyle style = new GUIStyle();
+
+        style.normal.textColor = Color.white;
+
+        GUI.Label(new Rect(0, 20, 300, 50), statusText, style);
+
+        if(GUI.Button(new Rect(2, 70, 296, 20), "Toggle Menu [P]")){
+            menuEnabled = !menuEnabled;
         }
     }
 
@@ -151,12 +141,14 @@ class GwogLoaderGUI: MonoBehaviour{
 
         foreach(string mod in availableModList){
             if(GUI.Button(new Rect(0, i * 20, 500, 20), mod)){
+                /*
                 if(!modIsEnabled(mod)){
                     enableMod(mod);
                 }
                 else{
                     disableMod(mod);
                 }
+                */
             }
             i++;
         }
@@ -175,6 +167,17 @@ class GwogLoaderGUI: MonoBehaviour{
         if(Input.GetKeyDown(KeyCode.P)){
             menuEnabled = !menuEnabled;
         }
+        GameManager gameManager = FindAnyObjectByType<GameManager>();
+
+        if(!fatalError){
+            if(gameManager == null){
+            if(gwogLoaderFinishedInit){
+                
+            }
+        }
+        }
+
+        /*
 
         GameManager gameManager = FindAnyObjectByType<GameManager>();
 
@@ -203,6 +206,7 @@ class GwogLoaderGUI: MonoBehaviour{
                 gwogLoaderModSync = null;
             }
         }
+        */
     }
 }
 

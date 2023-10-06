@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "tLu0oxprb8tFTFhfxrArBady8uclUGV3WX7PYwDW2BFlFwkvYUADxHGM83olGGTUDPB5UmC86pCoy1i0aF/4hg==",
+  "dgSpecHash": "YpWZzN/Sh5hvJD6dIRY1lmsfxqKHxkoW6j8sxQJzh5K5XWKdgkCovvRbPdUF4jWjap+QLhpVNPaPEsYb8rnHuw==",
   "success": true,
-  "projectFilePath": "C:\\Users\\David\\Documents\\gwogloader\\wormtown.csproj",
+  "projectFilePath": "C:\\Users\\gregorym\\Documents\\wormtown\\wormtown.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\David\\.nuget\\packages\\microsoft.netframework.referenceassemblies\\1.0.3\\microsoft.netframework.referenceassemblies.1.0.3.nupkg.sha512",
-    "C:\\Users\\David\\.nuget\\packages\\microsoft.netframework.referenceassemblies.net452\\1.0.3\\microsoft.netframework.referenceassemblies.net452.1.0.3.nupkg.sha512"
+    "C:\\Users\\gregorym\\.nuget\\packages\\microsoft.netframework.referenceassemblies\\1.0.3\\microsoft.netframework.referenceassemblies.1.0.3.nupkg.sha512",
+    "C:\\Users\\gregorym\\.nuget\\packages\\microsoft.netframework.referenceassemblies.net452\\1.0.3\\microsoft.netframework.referenceassemblies.net452.1.0.3.nupkg.sha512"
   ],
   "logs": []
 }

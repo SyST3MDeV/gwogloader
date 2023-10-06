@@ -1,1 +1,1 @@
-{"Mods":["infKits", "allKitsGuns", "crazyGunKnockback"]}
+{"mods":[{"name": "Infinite Kits", "description": "Enables infinite usage of all pardner kits!", "id": "infKits"}]}

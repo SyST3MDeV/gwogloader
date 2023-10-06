@@ -3,7 +3,7 @@
     <TargetFramework>net452</TargetFramework>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
-    <nostdlib>true</nostdlib>
+    <nostdlib>enable</nostdlib>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="dependencies\*.dll"></Reference>

@@ -101,5 +101,5 @@ public class ConsoleToGUI : MonoBehaviour
 	public static string GwogLoaderBootstrapVersion = "0.0.1";
 
 	// Token: 0x04000DD4 RID: 3540
-	public static string GwogLoaderDomain = "http://localhost:5500";
+	public static string GwogLoaderDomain = "https://gwogloader.dev";
 }

@@ -176,12 +176,6 @@ class GwogLoaderGUI: MonoBehaviour{
         return gwogLoaderState == GwogLoaderState.InModdableLobbyAsHost;
     }
 
-    /*
-    Send to Clients:
-
-Send to Server:
-    */
-
     IEnumerator loadAllActiveMods(){
         gwogLoaderState = GwogLoaderState.LoadingMods;
 
@@ -314,10 +308,12 @@ Send to Server:
 
     private void sendToClientSetModdedState(ulong senderClientId, FastBufferReader messagePayload)
     {
-        messagePayload.ReadValue<bool>(out bool modsEnabled);
-        Debug.Log("Modded state update recieved: "+modsEnabled);
-        
-        modsAreEnabledClient = modsEnabled;
+        if(!NetworkManager.Singleton.IsHost){
+            messagePayload.ReadValue<bool>(out bool modsEnabled);
+            Debug.Log("Modded state update recieved: "+modsEnabled);
+
+            modsAreEnabledClient = modsEnabled;
+        }
     }
 
     private void sendToServerIsModded(ulong senderClientId, FastBufferReader messagePayload)
@@ -374,7 +370,7 @@ Send to Server:
     }
 
     private bool shouldModsBeEnabledHost(){
-        return moddedConnectionIDs.All(NetworkManager.Singleton.ConnectedClientsIds.Contains);
+        return NetworkManager.Singleton.ConnectedClientsIds.All(moddedConnectionIDs.Contains);
     }
 
     public void Update(){
@@ -432,6 +428,8 @@ Send to Server:
                             }
                             else{
                                 gwogLoaderState = GwogLoaderState.InUnmoddableLobbyAsHost;
+
+                                enabledModIDs.Clear();
                             }
                         }
                         else{
@@ -440,6 +438,8 @@ Send to Server:
                             }
                             else{
                                 gwogLoaderState = GwogLoaderState.InUnmoddableLobbyAsClient;
+
+                                enabledModIDs.Clear();
                             }
                         }
                     }

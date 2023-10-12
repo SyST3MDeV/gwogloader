@@ -10,6 +10,8 @@ using System.Linq;
 using Newtonsoft.Json;
 using HarmonyLib;
 using Unity.VisualScripting;
+using System.Text;
+using Unity.Services.Relay;
 
 class GwogLoader{
     public static string version = "0.0.1";
@@ -72,6 +74,18 @@ class GwogLoaderGUI: MonoBehaviour{
 
     List<ulong> clientsWhoHaveLoadedAllMods = new List<ulong>();
 
+    private int selectedTab = 0;
+
+    private int openModDescription = -1;
+
+    public bool hostNumberPlayersUncapped = false;
+
+    public bool allowStartWithoutAWorm = false;
+
+    private GwogLoaderHostSettingsHolder settingsHolder;
+
+    private GwogLoaderLobbySettingsHolder lobbySettingsHolder;
+
     IEnumerator initGwogLoader(){
         UnityWebRequest www = UnityWebRequest.Get(GwogLoaderDomain + "/manifest.json");
 		yield return www.Send();
@@ -105,7 +119,6 @@ class GwogLoaderGUI: MonoBehaviour{
             windowPosition = GUI.Window(0, windowPosition, windowFunc, "GwogLoader Menu");
         }
     }
-
     public void statusWindowFunc(int windowID){
         string currentStateText = "";
 
@@ -165,14 +178,12 @@ class GwogLoaderGUI: MonoBehaviour{
 
         GUI.Label(new Rect(5, 20, 295, 50), statusText, style);
 
-        if(menuCanBeEnabled()){
-            if(GUI.Button(new Rect(2, 70, 296, 20), "Toggle Menu [P]")){
-                menuEnabled = !menuEnabled;
-            }
+        if(GUI.Button(new Rect(2, 70, 296, 20), "Toggle Menu [P]")){
+            menuEnabled = !menuEnabled;
         }
     }
 
-    public bool menuCanBeEnabled(){
+    public bool canChangeMods(){
         return gwogLoaderState == GwogLoaderState.InModdableLobbyAsHost;
     }
 
@@ -347,26 +358,81 @@ class GwogLoaderGUI: MonoBehaviour{
         }
     }
 
+    public bool modIsEnabled(Mod mod){
+        return enabledModIDs.Contains(mod.id);
+    }
+
     public void windowFunc(int windowID){
-        scrollPosition = GUI.BeginScrollView(new Rect(0, 0, 500, 600), scrollPosition, new Rect(0, 0, 500, 600));
+        selectedTab = GUI.Toolbar(new Rect(5, 20, 490, 20), selectedTab, new string[] {"Home", "Enabled Mods ("+enabledModIDs.Count+")", "Available Mods ("+availableModList.Count+")"});
 
-        int i = 1;
+        if(selectedTab == 2){
+            scrollPosition = GUI.BeginScrollView(new Rect(5, 40, 490, 600), scrollPosition, new Rect(5, 30, 490, 600));
 
-        foreach(Mod mod in availableModList){
-            if(GUI.Button(new Rect(0, i * 20, 500, 20), mod.name)){
-                toggleModState(mod.id);
+            int i = 1;
+
+            foreach(Mod mod in availableModList){
+                if(openModDescription == i){
+                    if(GUI.Button(new Rect(5, i * 20 + 10, 490, 20), mod.name)){
+                        openModDescription = -1;
+                    }
+                    GUI.Label(new Rect(5, i * 20 + 10 + 20, 490, 100), mod.description);
+                    if(canChangeMods()){
+                        if(GUI.Button(new Rect(5, i * 20 + 10 + 20 + 100, 490, 50), modIsEnabled(mod) ? "Disable Mod" : "Enable Mod")){
+                            toggleModState(mod.id);
+                        }
+                    }
+                    i++;
+                }
+                else{
+                    int offset = openModDescription < i && openModDescription != -1 ? canChangeMods() ? 150 : 100 : 0;
+                    if(GUI.Button(new Rect(5, i * 20 + 10 + offset, 490, 20), mod.name)){
+                        openModDescription = i;
+                    }
+                    i++;
+                }
             }
-            i++;
+
+            GUI.EndScrollView();
+        }
+        else if(selectedTab == 1){
+            scrollPosition = GUI.BeginScrollView(new Rect(5, 40, 490, 600), scrollPosition, new Rect(5, 30, 490, 600));
+
+            int i = 1;
+
+            foreach(string modID in enabledModIDs){
+                GUI.Label(new Rect(5, i * 20 + 10, 430, 20), getModFromID(modID).name);
+                if(canChangeMods()){
+                    if(GUI.Button(new Rect(430, i * 20 + 10, 65, 20), "Disable")){
+                        toggleModState(modID);
+                    }
+                }
+
+                i++;
+            }
+
+            GUI.EndScrollView();
+        }
+        else if(selectedTab == 0){
+            GUI.Label(new Rect(5, 40, 490, 20), "Welcome to GwogLoader!");
+            if(GUI.Button(new Rect(5, 60, 490, 20), hostNumberPlayersUncapped ? "Enable 8 player lobby maximum" : "Disable 8 player lobby maximum")){
+                hostNumberPlayersUncapped = !hostNumberPlayersUncapped;
+            }
+            if(GUI.Button(new Rect(5, 80, 490, 20), allowStartWithoutAWorm ? "Disallow starting without a worm" : "Allow starting without a worm")){
+                allowStartWithoutAWorm = !allowStartWithoutAWorm;
+            }
         }
 
-        //GUI.Button(new Rect(0, 0, 100, 20), "Top-left");
-        //GUI.Button(new Rect(120, 0, 100, 20), "Top-right");
-        //GUI.Button(new Rect(0, 180, 100, 20), "Bottom-left");
-        //GUI.Button(new Rect(120, 180, 100, 20), "Bottom-right");
-
-        GUI.EndScrollView();
-
         GUI.DragWindow(new Rect(0, 0, 10000, 10000));
+    }
+
+    public Mod getModFromID(string modID){
+        foreach(Mod mod in availableModList){
+            if(mod.id == modID){
+                return mod;
+            }
+        }
+
+        throw new Exception("Couldn't find mod in trusted repository when getModFromID called!");
     }
 
     private bool shouldModsBeEnabledHost(){
@@ -374,16 +440,17 @@ class GwogLoaderGUI: MonoBehaviour{
     }
 
     public void Update(){
-        if(menuCanBeEnabled()){
-            if(Input.GetKeyDown(KeyCode.P)){
-                menuEnabled = !menuEnabled;
-            }
+        if(settingsHolder == null){
+            settingsHolder = FindAnyObjectByType<RelayManager>().gameObject.AddComponent<GwogLoaderHostSettingsHolder>();
         }
-        else{
-            menuEnabled = false;
+
+        settingsHolder.hostNumberPlayersUncapped = hostNumberPlayersUncapped;
+
+        if(Input.GetKeyDown(KeyCode.P)){
+            menuEnabled = !menuEnabled;
         }
         
-        GameManager gameManager = FindAnyObjectByType<GameManager>();
+        GameManager gameManager = GameManager.Singleton;
 
         if(!fatalError){
             if(gameManager == null){
@@ -403,6 +470,12 @@ class GwogLoaderGUI: MonoBehaviour{
                 }
             }
             else{
+                if(lobbySettingsHolder == null){
+                    lobbySettingsHolder = FindAnyObjectByType<LobbyManager>().gameObject.AddComponent<GwogLoaderLobbySettingsHolder>();
+                }
+
+                lobbySettingsHolder.allowStartWithoutAWorm = allowStartWithoutAWorm;
+
                 ensureCustomCallbacksRegistered();
 
                 if(!moddedConnectionIDs.Contains(NetworkManager.Singleton.LocalClientId)){
@@ -410,14 +483,14 @@ class GwogLoaderGUI: MonoBehaviour{
                 }
                 
                 if(gameManager.gameState == GameManager.GameState.pre){
-                    if(FindObjectOfType<DummyLoadMods>() != null && gwogLoaderState != GwogLoaderState.LoadingMods && gwogLoaderState != GwogLoaderState.WaitingForOtherPlayersToLoadMods){
+                    if(LobbyManager.Singleton.GetComponent<DummyLoadMods>() != null && gwogLoaderState != GwogLoaderState.LoadingMods && gwogLoaderState != GwogLoaderState.WaitingForOtherPlayersToLoadMods){
                         StartCoroutine("loadAllActiveMods");
                     }
 
                     if(gwogLoaderState == GwogLoaderState.LoadingMods || gwogLoaderState == GwogLoaderState.WaitingForOtherPlayersToLoadMods){
                         if(NetworkManager.Singleton.IsHost){
                             if(moddedConnectionIDs.All(clientsWhoHaveLoadedAllMods.Contains)){
-                                FindObjectOfType<LobbyManager>().AttemptToStartGame();
+                                LobbyManager.Singleton.AttemptToStartGame();
                             }
                         }
                     }
@@ -504,3 +577,70 @@ class DummyLoadMods: MonoBehaviour{
         Destroy(this);
     }
 }
+
+class GwogLoaderHostSettingsHolder: MonoBehaviour{
+    public bool hostNumberPlayersUncapped = false;
+}
+
+class GwogLoaderLobbySettingsHolder: MonoBehaviour{
+    public bool allowStartWithoutAWorm = false;
+}
+
+[HarmonyPatch]
+class MaxRelayConnections
+{
+    public static MethodBase TargetMethod()
+    {
+        return AccessTools.FirstMethod(AccessTools.TypeByName("WrappedRelayService"), method => method.Name.Contains("CreateAllocationAsync"));
+    }
+
+    public static void Prefix(ref int maxConnections)
+    {
+        maxConnections = 99;
+    }
+}
+
+[HarmonyPatch(typeof(RelayManager))]
+[HarmonyPatch("ApprovalCallback")]
+class MaxApprovalConnections
+{
+    static void Postfix(LobbyManager __instance, ref NetworkManager.ConnectionApprovalRequest request, ref NetworkManager.ConnectionApprovalResponse response)
+    {
+        if(__instance.GetComponent<GwogLoaderHostSettingsHolder>() != null && __instance.GetComponent<GwogLoaderHostSettingsHolder>().hostNumberPlayersUncapped){
+            string @string = Encoding.ASCII.GetString(request.Payload);
+		    ConnectionPayload connectionPayload = JsonUtility.FromJson<ConnectionPayload>(@string);
+
+            if(response.Reason == "Lobby is full"){
+                response.Approved = true;
+                response.Reason = "";
+            }
+
+            if (response.Approved)
+		    {
+		    	if (NetworkManager.Singleton.IsHost && request.ClientNetworkId != 0UL)
+		    	{
+		    		PlayerData pData = new PlayerData(connectionPayload.playerName);
+		    		MenuToGameBridger.Singleton.AddPlayerToDataBank(request.ClientNetworkId, pData);
+		    		if (EventFeedManager.Singleton)
+		    		{
+		    			EventFeedManager.Singleton.AddANewEventFeedPopUp(EventFeedManager.EventFeedEventType.playerConnected, request.ClientNetworkId, 1000000UL, false, 0);
+		    		}
+		    	}
+		    }
+        }
+    }
+}
+
+[HarmonyPatch(typeof(LobbyManager))]
+[HarmonyPatch("CheckForTeamSizeIssues")]
+class StartWithoutAWormPatch{
+    static bool Prefix(LobbyManager __instance, ref bool __result){
+        if(__instance.GetComponent<GwogLoaderLobbySettingsHolder>() != null && __instance.GetComponent<GwogLoaderLobbySettingsHolder>().allowStartWithoutAWorm){
+            __result = false;
+            return false;
+        }
+        return true;
+    }
+}
+
+//CreateAllocationAsync
